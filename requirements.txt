@@ -9,3 +9,5 @@ langchain-community==0.3.26
 
 numpy
 pandas
+
+-e .
