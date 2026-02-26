@@ -1,14 +1,28 @@
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
-*.pyo
 
-# Virtual environment
+# Virtual environments
 .venv/
+env/
+venv/
 
-# Environment variables
+# Environment files
 .env
 
-# OS-specific
+# Packaging artifacts
+*.egg-info/
+build/
+dist/
+
+# OS files
 .DS_Store
 Thumbs.db
+
+research/demo.ipynb
+
+# Ignore everything inside data/
+data/*
+
+# But keep the folder tracked by Git (you need a placeholder file)
+!data/.gitkeep
