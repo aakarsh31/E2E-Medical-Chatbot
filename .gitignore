@@ -1,1 +1,14 @@
-.venv
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# OS-specific
+.DS_Store
+Thumbs.db
