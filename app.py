@@ -1,3 +1,4 @@
+#dependencies
 from flask import Flask, render_template,request,jsonify
 from src.helper import download_embeddings
 from langchain_pinecone import PineconeVectorStore
