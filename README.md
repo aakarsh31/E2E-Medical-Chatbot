@@ -4,8 +4,15 @@ A production-ready RAG (Retrieval-Augmented Generation) based medical chatbot th
 
 ---
 
+## 🎥 Demo
+
+[![Medical Chatbot Demo](https://img.youtube.com/vi/HS7oqF2Tkr8/0.jpg)](https://www.youtube.com/shorts/HS7oqF2Tkr8)
+
+---
+
 ## 📌 Table of Contents
 
+- [Demo](#demo)
 - [Project Overview](#project-overview)
 - [Tech Stack](#tech-stack)
 - [Project Architecture](#project-architecture)
