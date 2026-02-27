@@ -26,3 +26,5 @@ data/*
 
 # But keep the folder tracked by Git (you need a placeholder file)
 !data/.gitkeep
+
+.ecrfile.txt

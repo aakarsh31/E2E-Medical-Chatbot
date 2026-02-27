@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedAssistant | AI Health Support</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="chat-container">
+        
+        <header class="chat-header">
+            <div class="brand">
+                <div class="logo-icon"><i class="fas fa-hand-holding-medical"></i></div>
+                <div class="brand-text">
+                    <h1>MedAssistant</h1>
+                    <p><span class="status-dot"></span> Online | AI Medical Guide</p>
+                </div>
+            </div>
+        </header>
+
+        <div id="chat-window" class="chat-window">
+            <div class="message bot-message">
+                Hello! I am your AI medical assistant. How can I help you with your health queries today?
+            </div>
+        </div>
+
+        <form id="chat-form" class="input-area">
+            <input type="text" id="user-input" placeholder="Type your medical query..." autocomplete="off" required>
+            <button type="submit" id="send-btn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+
+    </div>
+
+    <!-- JS: jQuery + Marked (Markdown parser) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Upgraded Chat Logic -->
+    <script>
+        $(document).ready(function () {
+
+            function scrollBottom() {
+                $("#chat-window").scrollTop($("#chat-window")[0].scrollHeight);
+            }
+
+            function addUserMessage(text) {
+                $("#chat-window").append(`
+                    <div class="message user-message">${text}</div>
+                `);
+                scrollBottom();
+            }
+
+            function addBotMessageMarkdown(text) {
+                const html = marked.parse(text);
+                $("#chat-window").append(`
+                    <div class="message bot-message markdown">${html}</div>
+                `);
+                scrollBottom();
+            }
+
+            function showTyping(id) {
+                $("#chat-window").append(`
+                    <div class="message bot-message typing" id="${id}">
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                    </div>
+                `);
+                scrollBottom();
+            }
+
+            function removeTyping(id) {
+                $(`#${id}`).remove();
+            }
+
+            function typeResponse(fullText) {
+                const html = marked.parse(fullText);
+                const boxId = "typed-" + Date.now();
+
+                $("#chat-window").append(`
+                    <div class="message bot-message markdown"><span id="${boxId}"></span></div>
+                `);
+
+                let i = 0;
+                function typeChar() {
+                    document.getElementById(boxId).innerHTML = html.substring(0, i);
+                    i++;
+                    if (i <= html.length) {
+                        scrollBottom();
+                        setTimeout(typeChar, 5);
+                    }
+                }
+                typeChar();
+            }
+
+            $("#chat-form").on("submit", function (e) {
+                e.preventDefault();
+
+                const userText = $("#user-input").val().trim();
+                if (!userText) return;
+
+                addUserMessage(userText);
+                $("#user-input").val("");
+
+                const typingId = "t-" + Date.now();
+                showTyping(typingId);
+
+                $.ajax({
+                    url: "/get",
+                    type: "POST",
+                    data: { msg: userText },
+                    success: function (data) {
+                        removeTyping(typingId);
+                        typeResponse(data.answer);
+                    }
+                });
+            });
+
+        });
+    </script>
+
+</body>
+</html>
