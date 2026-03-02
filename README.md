@@ -269,11 +269,9 @@ Runs after CI succeeds.
 
 ---
 
-## Things to Know / Gotchas
+## Things to Know / Update
 
 - **`store_index.py` must be run before `app.py`** — the app connects to an *existing* Pinecone index. If the index doesn't exist yet, it will error on startup.
 - **Pinecone index name is hardcoded** as `"medical-chatbot"` in `app.py`. If you rename it in Pinecone, update it there too.
 - **`debug=True`** is set in `app.py` — fine locally but should be `False` in production for security.
-- **k=3** — only the top 3 most relevant chunks are passed to GPT-4o. If answers feel incomplete, consider increasing this.
-- **No error handling** on the `/get` route — if the RAG chain or Pinecone connection fails, Flask will return a raw 500. Worth adding a try/except for production robustness.
-- **The `.env` file should never be committed** — it's your local secrets file. Make sure it's in `.gitignore`.
+- **No error handling** on the `/get` route — if the RAG chain or Pinecone connection fails, Flask will return a raw 500..
