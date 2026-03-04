@@ -1,15 +1,22 @@
 #dependencies
 from flask import Flask, render_template,request,jsonify
-from src.helper import download_embeddings
+
+from src.helper import download_embeddings,load_pdf_files,filterer,chunker
+from src.prompt import *
+
 from langchain_pinecone import PineconeVectorStore
 from langchain_openai import ChatOpenAI
-from langchain.chains import create_retrieval_chain,create_history_aware_retriever
-from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_community.retrievers import BM25Retriever
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain.retrievers.document_compressors import CrossEncoderReranker
+from langchain.retrievers import EnsembleRetriever
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
-from src.prompt import *
+
 import os
 
 app = Flask(__name__)
@@ -23,6 +30,10 @@ os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
 
 embeddings = download_embeddings()
 
+extracted_data = load_pdf_files(data='data/')
+filtered_data = filterer(extracted_data)
+chunked_data = chunker(filtered_data)
+
 index_name = 'ragmedibot'
 docsearch =  PineconeVectorStore.from_existing_index(
     index_name=index_name,
@@ -31,7 +42,14 @@ docsearch =  PineconeVectorStore.from_existing_index(
 
 chatModel = ChatOpenAI(model='gpt-4o')
 
-retriever = docsearch.as_retriever(search_type = 'similarity',search_kwargs={"k":3})
+retriever = docsearch.as_retriever(search_type = 'similarity',search_kwargs={"k":5})
+
+bm25_retriever = BM25Retriever.from_documents(chunked_data,k=5)
+
+ensemble_retriever = EnsembleRetriever(retrievers=[retriever,bm25_retriever],weights=[0.5,0.5])
+
+reranker_model = HuggingFaceCrossEncoder(model_name = 'cross-encoder/ms-marco-MiniLM-L-6-v2')
+reranker = CrossEncoderReranker(model=reranker_model,top_n=5)
 
 contextualize_q_prompt = ChatPromptTemplate.from_messages(
 [
@@ -40,7 +58,6 @@ MessagesPlaceholder("chat_history"),
 ("human","{input}")
 ])
 
-history_aware_retriever = create_history_aware_retriever(chatModel,retriever,contextualize_q_prompt)
 
 qa_prompt = ChatPromptTemplate.from_messages(
     [
@@ -50,8 +67,20 @@ qa_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-QA_chain = create_stuff_documents_chain(chatModel,qa_prompt)
-rag_chain = create_retrieval_chain(history_aware_retriever,QA_chain)
+
+rag_chain = (
+    RunnablePassthrough.assign(
+        standalone_question=(contextualize_q_prompt | chatModel | StrOutputParser())
+    )
+    | RunnablePassthrough.assign(
+        context=lambda x: reranker.compress_documents(
+            ensemble_retriever.invoke(x['standalone_question']),
+            x['standalone_question']
+        )
+    )
+    | qa_prompt
+    | chatModel
+)
 
 # SESSION STORE - store sessions across conversations
 store = {}
@@ -65,7 +94,6 @@ conversational_rag_chain = RunnableWithMessageHistory(
     get_session_history,
     input_messages_key="input",
     history_messages_key="chat_history",
-    output_messages_key="answer"  # ← add this line
 )
 
 @app.route('/')
@@ -76,18 +104,12 @@ def index():
 def chat():
 
     msg = request.form['msg']
-    # temporary debug in /get route
-    test_docs = history_aware_retriever.invoke({
-    "input": msg,
-    "chat_history": []
-})
-    print("HISTORY-AWARE RETRIEVED DOCS:", [d.page_content[:100] for d in test_docs])
     session_id = request.form["session_id"]
     print(msg)
     response = conversational_rag_chain.invoke({"input":msg},
-                                               config={"configurable":{"session_id":session_id}})
-    print("Response :", response["answer"])
-    return jsonify({"answer": response['answer']})
+    config={"configurable":{"session_id":session_id}})
+    print("Response :", response.content)
+    return jsonify({"answer": response.content})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0',port = 8080,debug=True)
