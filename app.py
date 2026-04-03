@@ -1,5 +1,5 @@
 #dependencies
-from flask import Flask, render_template,request,jsonify
+from flask import Flask, render_template,request,jsonify, Response
 
 from src.helper import download_embeddings,load_pdf_files,filterer,chunker
 from src.prompt import *
@@ -100,16 +100,30 @@ conversational_rag_chain = RunnableWithMessageHistory(
 def index():
     return render_template('chat.html')
 
-@app.route("/get",methods=['GET','POST'])
+@app.route("/get", methods=['GET', 'POST'])
 def chat():
-
     msg = request.form['msg']
     session_id = request.form["session_id"]
-    print(msg)
-    response = conversational_rag_chain.invoke({"input":msg},
-    config={"configurable":{"session_id":session_id}})
-    print("Response :", response.content)
-    return jsonify({"answer": response.content})
+    
+    response = conversational_rag_chain.stream(
+        {"input": msg},
+        config={"configurable": {"session_id": session_id}}
+    )
+
+    def generate():
+        for chunk in response:
+            if chunk.content:
+                yield f"data: {chunk.content}\n\n"
+        yield "data: [DONE]\n\n"  # signal stream is done
+
+    return Response(
+    generate(),
+    mimetype='text/event-stream',
+    headers={
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no'
+    }
+)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0',port = 8080,debug=True)
