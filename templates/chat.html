@@ -186,7 +186,6 @@
             color: var(--text);
         }
 
-        /* Flashy accent on new bot messages */
         .bot-bubble.fresh {
             border-left: 2px solid var(--accent);
             animation: bubbleGlow 2s ease forwards;
@@ -295,7 +294,6 @@
             box-shadow: 0 0 0 3px rgba(56,189,248,0.05);
         }
 
-        /* Flashy send button */
         #send-btn {
             width: 44px;
             height: 44px;
@@ -315,7 +313,6 @@
             box-shadow: 0 4px 14px rgba(56,189,248,0.3);
         }
 
-        /* Shimmer sweep on hover */
         #send-btn::before {
             content: '';
             position: absolute;
@@ -452,35 +449,8 @@
 
             function removeTyping(id) { $(`#${id}`).remove(); }
 
-            function typeResponse(fullText) {
-                const html = marked.parse(fullText);
-                const boxId = "typed-" + Date.now();
-
-                $("#chat-window").append(`
-                    <div class="message">
-                        <div class="avatar bot-avatar"><i class="fas fa-dna"></i></div>
-                        <div class="msg-col">
-                            <div class="bubble bot-bubble fresh"><span id="${boxId}"></span></div>
-                            <div class="timestamp">${getTime()}</div>
-                        </div>
-                    </div>
-                `);
-
-                let i = 0;
-                function typeChar() {
-                    const el = document.getElementById(boxId);
-                    if (!el) return;
-                    el.innerHTML = html.substring(0, i);
-                    i++;
-                    if (i <= html.length) {
-                        scrollBottom();
-                        setTimeout(typeChar, 4);
-                    }
-                }
-                typeChar();
-            }
-
-            $("#chat-form").on("submit", function (e) {
+            // ── UPDATED SUBMIT HANDLER — real SSE streaming via fetch ──
+            $("#chat-form").on("submit", async function (e) {
                 e.preventDefault();
                 const userText = $("#user-input").val().trim();
                 if (!userText) return;
@@ -494,35 +464,76 @@
                 const typingId = "t-" + Date.now();
                 showTyping(typingId);
 
-                $.ajax({
-                    url: "/get",
-                    type: "POST",
-                    data: { msg: userText, session_id: SESSION_ID },
-                    success: function (data) {
-                        removeTyping(typingId);
-                        typeResponse(data.answer);
-                        $("#send-btn").prop("disabled", false)
-                                     .removeClass("loading")
-                                     .html('<i class="fas fa-arrow-up"></i>');
-                    },
-                    error: function () {
-                        removeTyping(typingId);
-                        $("#chat-window").append(`
-                            <div class="message">
-                                <div class="avatar bot-avatar"><i class="fas fa-dna"></i></div>
-                                <div class="msg-col">
-                                    <div class="bubble bot-bubble" style="border-color:rgba(248,113,113,0.25);color:#f87171;">
-                                        Something went wrong. Please try again.
-                                    </div>
+                const formData = new FormData();
+                formData.append('msg', userText);
+                formData.append('session_id', SESSION_ID);
+
+                try {
+                    const response = await fetch('/get', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    // Remove typing indicator and create empty bubble to stream into
+                    removeTyping(typingId);
+                    const boxId = "stream-" + Date.now();
+                    $("#chat-window").append(`
+                        <div class="message">
+                            <div class="avatar bot-avatar"><i class="fas fa-dna"></i></div>
+                            <div class="msg-col">
+                                <div class="bubble bot-bubble fresh"><span id="${boxId}"></span></div>
+                                <div class="timestamp">${getTime()}</div>
+                            </div>
+                        </div>
+                    `);
+
+                    let fullText = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const token = line.replace('data: ', '');
+                                if (token === '[DONE]') {
+                                    // Stream finished — render full markdown
+                                    document.getElementById(boxId).innerHTML = marked.parse(fullText);
+                                    scrollBottom();
+                                } else {
+                                    // Append token as plain text while streaming
+                                    fullText += token;
+                                    document.getElementById(boxId).textContent = fullText;
+                                    scrollBottom();
+                                }
+                            }
+                        }
+                    }
+
+                } catch (err) {
+                    removeTyping(typingId);
+                    $("#chat-window").append(`
+                        <div class="message">
+                            <div class="avatar bot-avatar"><i class="fas fa-dna"></i></div>
+                            <div class="msg-col">
+                                <div class="bubble bot-bubble" style="border-color:rgba(248,113,113,0.25);color:#f87171;">
+                                    Something went wrong. Please try again.
                                 </div>
                             </div>
-                        `);
-                        $("#send-btn").prop("disabled", false)
-                                     .removeClass("loading")
-                                     .html('<i class="fas fa-arrow-up"></i>');
-                        scrollBottom();
-                    }
-                });
+                        </div>
+                    `);
+                    scrollBottom();
+                }
+
+                $("#send-btn").prop("disabled", false)
+                             .removeClass("loading")
+                             .html('<i class="fas fa-arrow-up"></i>');
             });
 
             $("#user-input").on("keydown", function (e) {
