@@ -16,9 +16,11 @@ from langchain.retrievers import EnsembleRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
-
+import logger as _logger_config  #Triggers only basicConfig
+import logging
 import os
 
+logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 load_dotenv()
@@ -104,7 +106,8 @@ def index():
 def chat():
     msg = request.form['msg']
     session_id = request.form["session_id"]
-    
+    logger.info(f"Received user message: {msg}")
+
     response = conversational_rag_chain.stream(
         {"input": msg},
         config={"configurable": {"session_id": session_id}}
@@ -114,16 +117,16 @@ def chat():
         for chunk in response:
             if chunk.content:
                 yield f"data: {chunk.content}\n\n"
-        yield "data: [DONE]\n\n"  # signal stream is done
+        yield "data: [DONE]\n\n"
 
     return Response(
-    generate(),
-    mimetype='text/event-stream',
-    headers={
-        'Cache-Control': 'no-cache',
-        'X-Accel-Buffering': 'no'
-    }
-)
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no'
+        }
+    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0',port = 8080,debug=True)
