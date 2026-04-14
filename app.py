@@ -104,14 +104,24 @@ def index():
 
 @app.route("/get", methods=['GET', 'POST'])
 def chat():
-    msg = request.form['msg']
-    session_id = request.form["session_id"]
-    logger.info(f"Received user message: {msg}")
+    try:
+        msg = request.form['msg']
+        if not msg:
+            return jsonify({"error":"Empty user message"}), 400
+        session_id = request.form["session_id"]
+        logger.info(f"Received user message: {msg}")
+    except Exception as e:
+        logger.warning(f'Invalid request: {e}')
+        return jsonify({"error": "Invalid/Empty user message"}), 400
 
-    response = conversational_rag_chain.stream(
-        {"input": msg},
-        config={"configurable": {"session_id": session_id}}
-    )
+    try:
+        response = conversational_rag_chain.stream(
+            {"input": msg},
+            config={"configurable": {"session_id": session_id}}
+        )
+    except Exception as e:
+        logger.error(f"Pipeline failure: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
 
     def generate():
         for chunk in response:
@@ -130,7 +140,5 @@ def chat():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0',port = 8080,debug=True)
-
-
 
 
