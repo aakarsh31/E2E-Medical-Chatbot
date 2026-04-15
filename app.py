@@ -1,5 +1,10 @@
 #dependencies
 from flask import Flask, render_template,request,jsonify, Response
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+
+
 
 from src.helper import download_embeddings,load_pdf_files,filterer,chunker
 from src.prompt import *
@@ -22,6 +27,14 @@ import os
 
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
+
+#Flask Rate Limiting
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="redis://localhost:6379/"
+)
 
 load_dotenv()
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
@@ -102,6 +115,7 @@ def index():
     return render_template('chat.html')
 
 @app.route("/get", methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def chat():
     try:
         msg = request.form['msg']
