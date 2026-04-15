@@ -7,7 +7,7 @@ from src.prompt import *
 from langchain_pinecone import PineconeVectorStore
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_community.chat_message_histories import RedisChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.retrievers import BM25Retriever
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
@@ -85,11 +85,10 @@ rag_chain = (
 )
 
 # SESSION STORE - store sessions across conversations
-store = {}
-def get_session_history(session_id):
-    if session_id not in store:
-        store[session_id] = ChatMessageHistory()
-    return store[session_id]
+
+def get_session_history(session_id,url='redis://localhost:6379'):
+    history = RedisChatMessageHistory(session_id,url)
+    return history
 
 conversational_rag_chain = RunnableWithMessageHistory(
     rag_chain,
