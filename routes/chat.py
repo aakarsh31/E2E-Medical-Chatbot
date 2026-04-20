@@ -4,7 +4,7 @@ import logger as _logger_config  #Triggers only basicConfig
 from src.chain import conversational_rag_chain
 import logging
 from src.extensions import limiter
-
+from src.guardrails import guardrail
 
 chat_bp = Blueprint('chat',__name__)
 logger = logging.getLogger(__name__)
@@ -27,6 +27,23 @@ def chat():
     except Exception as e:
         logger.warning(f'Invalid request: {e}')
         return jsonify({"error": "Invalid/Empty user message"}), 400
+    
+    msg_class = guardrail(msg)
+    if msg_class == "medical":
+        pass
+    elif msg_class == "off_topic":
+        return Response(
+    ["data: I'm sorry, kindly ask me medical questions only!\n\n"],
+    mimetype='text/event-stream',
+    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+)
+    else:
+        return Response(
+    ["data: WARNING - Obscene/Harmful Content  Detected in your query.\n\n"],
+    mimetype='text/event-stream',
+    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+)
+    logger.info(f"Identified category of {msg} as {msg_class}")
 
     try:
         response = conversational_rag_chain.stream(
