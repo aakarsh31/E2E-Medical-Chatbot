@@ -29,6 +29,8 @@ def chat():
         return jsonify({"error": "Invalid/Empty user message"}), 400
     
     msg_class = guardrail(msg)
+    logger.info(f"Identified category of {msg} as {msg_class}")
+    
     if msg_class == "medical":
         pass
     elif msg_class == "off_topic":
@@ -43,7 +45,6 @@ def chat():
     mimetype='text/event-stream',
     headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
 )
-    logger.info(f"Identified category of {msg} as {msg_class}")
 
     try:
         response = conversational_rag_chain.stream(
