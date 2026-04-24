@@ -17,7 +17,7 @@ import json
 
 load_dotenv()
 embeddings = download_embeddings()
-index_name = 'ragmedibot'
+index_name = 'counselai'
 docsearch =  PineconeVectorStore.from_existing_index(
     index_name=index_name,
     embedding=embeddings
@@ -57,7 +57,8 @@ for i in test_questions:
 
 ragaset = EvaluationDataset.from_list(dataset)
 
-evaluator = LangchainLLMWrapper(chat_model)
+evaluator_model = ChatOpenAI(model='gpt-4o-mini')
+evaluator = LangchainLLMWrapper(evaluator_model)
 result = evaluate(
     dataset=ragaset,
     metrics=[LLMContextRecall(), Faithfulness(), LLMContextPrecisionWithReference(), ResponseRelevancy()],

@@ -23,13 +23,53 @@ from langchain_core.prompts import MessagesPlaceholder
 
 load_dotenv()
 
+state_map = {
+    "NY": "New York",
+    "CA": "California",
+    "TX": "Texas",
+    "FL": "Florida",
+    "IL": "Illinois",
+    "US": "Federal"
+}
+def detect_state(query: str):
+    state_names = {
+        "new york": "New York",
+        "california": "California",
+        "texas": "Texas",
+        "florida": "Florida",
+        "illinois": "Illinois"
+    }
+    query_lower = query.lower()
+    for key, value in state_names.items():
+        if key in query_lower:
+            return value
+    return None
+
+def get_context(x):
+    state = detect_state(x['standalone_question'])
+    search_kwargs = {"k": 5, "filter": {"state": {"$eq": state}}} if state else {"k": 5}
+    dynamic_retriever = EnsembleRetriever(
+        retrievers=[
+            docsearch.as_retriever(
+                search_type='similarity',
+                search_kwargs=search_kwargs
+            ),
+            bm25_retriever
+        ],
+        weights=[0.5, 0.5]
+    )
+    return reranker.compress_documents(
+        dynamic_retriever.invoke(x['standalone_question']),
+        x['standalone_question']
+    )
+
 extracted_data = load_pdf_files(data='data/')
-filtered_data = filterer(extracted_data)
+filtered_data = filterer(extracted_data, state_map)
 chunked_data = chunker(filtered_data)
 
 embeddings = download_embeddings()
 
-index_name = 'ragmedibot'
+index_name = 'counselai'
 docsearch =  PineconeVectorStore.from_existing_index(
     index_name=index_name,
     embedding=embeddings
@@ -68,10 +108,7 @@ rag_chain = (
         standalone_question=(contextualize_q_prompt | chatModel | StrOutputParser())
     )
     | RunnablePassthrough.assign(
-        context=lambda x: reranker.compress_documents(
-            ensemble_retriever.invoke(x['standalone_question']),
-            x['standalone_question']
-        )
+        context=get_context
     )
     | qa_prompt
     | chatModel
@@ -97,28 +134,44 @@ for idx, q in enumerate(test_questions):
     else:
         session_id = str(uuid.uuid4())
     
+    # Get standalone question first
+    history = get_session_history(session_id)
+    standalone = (contextualize_q_prompt | chatModel | StrOutputParser()).invoke({
+        "input": q["user_input"],
+        "chat_history": history.messages
+    })
+    
+    # Get actual contexts used by the pipeline
+    actual_docs = get_context({"standalone_question": standalone})
+    contexts = [doc.page_content for doc in actual_docs]
+    
+    # Generate response
     response = conversational_rag_chain.invoke(
         {"input": q["user_input"]},
         config={"configurable": {"session_id": session_id}}
     ).content
-    
-    docs = ensemble_retriever.invoke(q["user_input"])
-    contexts = [doc.page_content for doc in docs]
     
     dataset.append({
         "user_input": q["user_input"],
         "retrieved_contexts": contexts,
         "response": response,
         "reference": q["reference"]
+    
+    
     })
+    print(f"Q: {q['user_input']}")
+    print(f"A: {response}")
+    print("---")
 
 # RAGAS evaluation — comes after loop
 ragaset = EvaluationDataset.from_list(dataset)
-evaluator = LangchainLLMWrapper(chatModel)
+evaluator_model = ChatOpenAI(model='gpt-4o-mini')
+evaluator = LangchainLLMWrapper(evaluator_model)
 result = evaluate(
     dataset=ragaset,
     metrics=[LLMContextRecall(), Faithfulness(), LLMContextPrecisionWithReference(), ResponseRelevancy()],
-    llm=evaluator
+    llm=evaluator,
+    raise_exceptions=False
 )
 
 scores = result.to_pandas().select_dtypes(include='number').mean().to_dict()
