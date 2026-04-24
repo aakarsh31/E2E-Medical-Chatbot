@@ -3,7 +3,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from typing import List
 from langchain.schema import Document
-
+import os
 
 #Extract data from pdf file
 def load_pdf_files(data):
@@ -18,17 +18,23 @@ def load_pdf_files(data):
 
 
 
-def filterer(docs: List[Document]) -> List[Document]:
+def filterer(docs: List[Document], state_map: dict) -> List[Document]:
 
-    """Given List of documents, return Documents with 'source' only in the metadata along with the content"""
+    """Given List of documents, return Documents with 'source' and 'Page' only in the metadata along with the content"""
     
     filtered_docs:List[Document] = []
     for doc in docs:
         src = doc.metadata.get("source")
+        filename = os.path.basename(src)
+        state_abbr = filename.split("_")[0]
+        state = state_map.get(state_abbr, "Unknown")
+        page = int(doc.metadata.get("page", 0))
         filtered_docs.append(
             Document(
                 page_content=doc.page_content,
-                metadata={"source":src}
+                metadata={"source":src,
+                          "page":page,
+                          "state": state}
             )
         )
     return filtered_docs

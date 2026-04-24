@@ -31,7 +31,7 @@ def chat():
     msg_class = guardrail(msg)
     logger.info(f"Identified category of {msg} as {msg_class}")
     
-    if msg_class == "medical":
+    if msg_class == "legal":
         pass
     elif msg_class == "off_topic":
         return Response(

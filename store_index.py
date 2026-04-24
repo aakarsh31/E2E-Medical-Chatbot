@@ -16,14 +16,23 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 os.environ['PINECONE_API_KEY'] = PINECONE_API_KEY
 os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
 
+state_map = {
+    "NY": "New York",
+    "CA": "California",
+    "TX": "Texas",
+    "FL": "Florida",
+    "IL": "Illinois",
+    "US": "Federal"
+}
+
 extracted_data = load_pdf_files(data='data/')
-filtered_data = filterer(extracted_data)
+filtered_data = filterer(extracted_data, state_map)
 chunked_data = chunker(filtered_data)
 
 pinecone_api_key = PINECONE_API_KEY
 pc = Pinecone(api_key=pinecone_api_key)
 
-index_name = "ragmedibot"
+index_name = 'counselai'
 
 if not pc.has_index(index_name):
     pc.create_index(

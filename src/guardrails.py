@@ -8,7 +8,8 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
 
-classifier_prompt = """Identify the given statement as a medical, off_topic, harmful, return only 1 of these 3 labels, no additional wording."""
+classifier_prompt = """Identify the given statement as a legal, off_topic, harmful, return only 1 of these 3 labels, no additional wording.
+Only label as 'harmful' if the query explicitly seeks to cause physical harm, harass, stalk, or facilitate illegal violence against a person. Legal disputes, tenant issues, employment conflicts, and criminal procedure questions are always 'legal' even if adversarial in nature."""
 
 qa_prompt = ChatPromptTemplate.from_messages(
     [

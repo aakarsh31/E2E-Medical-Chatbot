@@ -29,13 +29,54 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 os.environ['PINECONE_API_KEY'] = PINECONE_API_KEY
 os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
 
+state_map = {
+    "NY": "New York",
+    "CA": "California",
+    "TX": "Texas",
+    "FL": "Florida",
+    "IL": "Illinois",
+    "US": "Federal"
+}
+
+def detect_state(query: str):
+    state_names = {
+        "new york": "New York",
+        "california": "California",
+        "texas": "Texas",
+        "florida": "Florida",
+        "illinois": "Illinois"
+    }
+    query_lower = query.lower()
+    for key, value in state_names.items():
+        if key in query_lower:
+            return value
+    return None
+
+def get_context(x):
+    state = detect_state(x['standalone_question'])
+    search_kwargs = {"k": 5, "filter": {"state": {"$eq": state}}} if state else {"k": 5}
+    dynamic_retriever = EnsembleRetriever(
+        retrievers=[
+            docsearch.as_retriever(
+                search_type='similarity',
+                search_kwargs=search_kwargs
+            ),
+            bm25_retriever
+        ],
+        weights=[0.5, 0.5]
+    )
+    return reranker.compress_documents(
+        dynamic_retriever.invoke(x['standalone_question']),
+        x['standalone_question']
+    )
+
 embeddings = download_embeddings()
 
 extracted_data = load_pdf_files(data='data/')
-filtered_data = filterer(extracted_data)
+filtered_data = filterer(extracted_data, state_map)
 chunked_data = chunker(filtered_data)
 
-index_name = 'ragmedibot'
+index_name = 'counselai'
 docsearch =  PineconeVectorStore.from_existing_index(
     index_name=index_name,
     embedding=embeddings
@@ -74,10 +115,7 @@ rag_chain = (
         standalone_question=(contextualize_q_prompt | chatModel | StrOutputParser())
     )
     | RunnablePassthrough.assign(
-        context=lambda x: reranker.compress_documents(
-            ensemble_retriever.invoke(x['standalone_question']),
-            x['standalone_question']
-        )
+        context=get_context
     )
     | qa_prompt
     | chatModel
