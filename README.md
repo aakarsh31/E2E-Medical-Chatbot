@@ -6,7 +6,7 @@ A production-ready RAG (Retrieval-Augmented Generation) legal chatbot that inges
 
 ## 🎥 Demo
 
-> 🔗 **Live Demo:** *(Railway deployment coming soon)*
+🔗 **Live Demo:** [counselai.up.railway.app](https://counselai.up.railway.app)
 
 ---
 
