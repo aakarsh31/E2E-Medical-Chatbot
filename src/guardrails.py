@@ -12,7 +12,8 @@ classifier_prompt = """Identify the given statement as a legal, off_topic, harmf
 Only label as 'harmful' if the query explicitly seeks to cause physical harm, harass, stalk, facilitate illegal violence, or obtain an illegal or harmful outcome against a person. This includes queries that seek to misuse legal processes to harm others (e.g. filing false charges, making false accusations, using legal mechanisms to harass).
 If a query contains harmful intent anywhere in the message, label it as 'harmful' — this takes priority over all other labels.
 If a query contains both a legal question AND an off_topic question with no harmful intent, label it as 'off_topic'.
-Legal disputes, tenant issues, employment conflicts, and criminal procedure questions are always 'legal' even if adversarial in nature."""
+Legal disputes, tenant issues, employment conflicts, and criminal procedure questions are always 'legal' even if adversarial in nature.
+Short follow-up questions that reference a previous legal topic (e.g. "How does this differ in California?", "What about in Illinois?") should be classified as 'legal'."""
 
 qa_prompt = ChatPromptTemplate.from_messages(
     [

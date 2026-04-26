@@ -21,8 +21,6 @@ Thumbs.db
 
 research/demo.ipynb
 
-# Ignore everything inside data/
-data/*
 
 # But keep the folder tracked by Git (you need a placeholder file)
 !data/.gitkeep

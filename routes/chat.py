@@ -35,7 +35,7 @@ def chat():
         pass
     elif msg_class == "off_topic":
         return Response(
-    ["data: I'm sorry, kindly ask me medical questions only!\n\n"],
+    ["data: I'm sorry, kindly ask me legal questions only!\n\n"],
     mimetype='text/event-stream',
     headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
 )
