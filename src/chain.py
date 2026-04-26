@@ -40,11 +40,18 @@ state_map = {
 
 def detect_state(query: str):
     state_names = {
+        "new york city": "New York",
         "new york": "New York",
+        "nyc": "New York",
+        "ny ": "New York",
         "california": "California",
+        "ca ": "California",
         "texas": "Texas",
+        "tx ": "Texas",
         "florida": "Florida",
-        "illinois": "Illinois"
+        "fl ": "Florida",
+        "illinois": "Illinois",
+        "il ": "Illinois",
     }
     query_lower = query.lower()
     for key, value in state_names.items():
@@ -55,16 +62,16 @@ def detect_state(query: str):
 def get_context(x):
     state = detect_state(x['standalone_question'])
     search_kwargs = {"k": 5, "filter": {"state": {"$eq": state}}} if state else {"k": 5}
-    dynamic_retriever = EnsembleRetriever(
-        retrievers=[
-            docsearch.as_retriever(
-                search_type='similarity',
-                search_kwargs=search_kwargs
-            ),
-            bm25_retriever
-        ],
-        weights=[0.5, 0.5]
-    )
+    dense = docsearch.as_retriever(search_type='similarity', search_kwargs=search_kwargs)
+
+    if use_bm25 and bm25_retriever:
+        dynamic_retriever = EnsembleRetriever(
+            retrievers=[dense, bm25_retriever],
+            weights=[0.5, 0.5]
+        )
+    else:
+        dynamic_retriever = dense
+
     return reranker.compress_documents(
         dynamic_retriever.invoke(x['standalone_question']),
         x['standalone_question']
@@ -72,26 +79,28 @@ def get_context(x):
 
 embeddings = download_embeddings()
 
-extracted_data = load_pdf_files(data='data/')
-filtered_data = filterer(extracted_data, state_map)
-chunked_data = chunker(filtered_data)
-
 index_name = 'counselai'
-docsearch =  PineconeVectorStore.from_existing_index(
+docsearch = PineconeVectorStore.from_existing_index(
     index_name=index_name,
     embedding=embeddings
 )
 
 chatModel = ChatOpenAI(model='gpt-4o')
 
-retriever = docsearch.as_retriever(search_type = 'similarity',search_kwargs={"k":5})
+try:
+    extracted_data = load_pdf_files(data='data/')
+    filtered_data = filterer(extracted_data, state_map)
+    chunked_data = chunker(filtered_data)
+    bm25_retriever = BM25Retriever.from_documents(chunked_data, k=5)
+    use_bm25 = True
+    logger.info("BM25 retriever initialized successfully")
+except Exception as e:
+    logger.warning(f"BM25 unavailable - falling back to dense-only retrieval: {e}")
+    bm25_retriever = None
+    use_bm25 = False
 
-bm25_retriever = BM25Retriever.from_documents(chunked_data,k=5)
-
-ensemble_retriever = EnsembleRetriever(retrievers=[retriever,bm25_retriever],weights=[0.5,0.5])
-
-reranker_model = HuggingFaceCrossEncoder(model_name = 'cross-encoder/ms-marco-MiniLM-L-6-v2')
-reranker = CrossEncoderReranker(model=reranker_model,top_n=5)
+reranker_model = HuggingFaceCrossEncoder(model_name='cross-encoder/ms-marco-MiniLM-L-6-v2')
+reranker = CrossEncoderReranker(model=reranker_model, top_n=5)
 
 contextualize_q_prompt = ChatPromptTemplate.from_messages(
 [
@@ -100,7 +109,6 @@ MessagesPlaceholder("chat_history"),
 ("human","{input}")
 ])
 
-
 qa_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", system_prompt),
@@ -108,7 +116,6 @@ qa_prompt = ChatPromptTemplate.from_messages(
         ("human", "{input}")
     ]
 )
-
 
 rag_chain = (
     RunnablePassthrough.assign(
@@ -129,5 +136,3 @@ conversational_rag_chain = RunnableWithMessageHistory(
 )
 
 logger.info("RAG chain initialized successfully")
-
-
