@@ -1,8 +1,9 @@
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import os
 
 limiter = Limiter(
     get_remote_address,
     default_limits=[],
-    storage_uri="redis://localhost:6379/"
+    storage_uri=os.getenv('REDIS_URL', 'redis://localhost:6379/')
 )
