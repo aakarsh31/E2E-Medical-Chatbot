@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedAssistant | AI Health Support</title>
+    <title>CounselAI | Legal Assistant</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -363,9 +363,9 @@
     <div class="chat-wrapper">
         <header class="chat-header">
             <div class="brand">
-                <div class="logo-icon"><i class="fas fa-dna"></i></div>
+                <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
                 <div class="brand-text">
-                    <h1>Med<span>Assistant</span></h1>
+                    <h1>Counsel<span>AI</span></h1>
                     <div class="status-line">
                         <span class="status-dot"></span>
                         <span>Online · RAG · GPT-4o</span>
@@ -377,11 +377,11 @@
 
         <div id="chat-window" class="chat-window">
             <div class="message">
-                <div class="avatar bot-avatar"><i class="fas fa-dna"></i></div>
+                <div class="avatar bot-avatar"><i class="fas fa-scale-balanced"></i></div>
                 <div class="msg-col">
                     <div class="bubble bot-bubble fresh">
-                        Hello — I'm your AI medical assistant, grounded in medical literature and clinical references.<br><br>
-                        Ask me anything about <strong>health conditions, medications, or symptoms</strong>.
+                        Hello — I'm CounselAI, your legal assistant grounded in official US federal and state statutes.<br><br>
+                        Ask me anything about <strong>tenant rights, employment law, or criminal procedure</strong> across New York, California, Texas, Florida, and Illinois.
                     </div>
                     <div class="timestamp">Just now</div>
                 </div>
@@ -391,13 +391,13 @@
         <div class="input-section">
             <form id="chat-form">
                 <div class="input-row">
-                    <input type="text" id="user-input" placeholder="Ask a medical question..." autocomplete="off" required>
+                    <input type="text" id="user-input" placeholder="Ask a legal question..." autocomplete="off" required>
                     <button type="submit" id="send-btn">
                         <i class="fas fa-arrow-up"></i>
                     </button>
                 </div>
             </form>
-            <div class="disclaimer">⚕ For informational purposes only · Not a substitute for professional medical advice</div>
+            <div class="disclaimer">⚖ For informational purposes only · Not a substitute for professional legal advice</div>
         </div>
     </div>
 
@@ -434,7 +434,7 @@
             function showTyping(id) {
                 $("#chat-window").append(`
                     <div class="message" id="${id}">
-                        <div class="avatar bot-avatar"><i class="fas fa-dna"></i></div>
+                        <div class="avatar bot-avatar"><i class="fas fa-scale-balanced"></i></div>
                         <div class="msg-col">
                             <div class="bubble bot-bubble typing-bubble">
                                 <span class="dot"></span>
@@ -482,7 +482,7 @@
                     const boxId = "stream-" + Date.now();
                     $("#chat-window").append(`
                         <div class="message">
-                            <div class="avatar bot-avatar"><i class="fas fa-dna"></i></div>
+                            <div class="avatar bot-avatar"><i class="fas fa-scale-balanced"></i></div>
                             <div class="msg-col">
                                 <div class="bubble bot-bubble fresh"><span id="${boxId}"></span></div>
                                 <div class="timestamp">${getTime()}</div>
@@ -520,7 +520,7 @@
                     removeTyping(typingId);
                     $("#chat-window").append(`
                         <div class="message">
-                            <div class="avatar bot-avatar"><i class="fas fa-dna"></i></div>
+                            <div class="avatar bot-avatar"><i class="fas fa-scale-balanced"></i></div>
                             <div class="msg-col">
                                 <div class="bubble bot-bubble" style="border-color:rgba(248,113,113,0.25);color:#f87171;">
                                     Something went wrong. Please try again.
